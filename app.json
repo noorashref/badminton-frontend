@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Badminton",
+    "slug": "badminton",
+    "version": "0.1.0",
+    "scheme": "badminton",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "sdkVersion": "51.0.0",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f6f4ef"
+    },
+    "extra": {},
+    "android": {
+      "package": "com.smashref.badminton"
+    },
+    "ios": {
+      "bundleIdentifier": "com.smashref.badminton"
+    }
+  }
+}

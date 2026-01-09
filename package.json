@@ -1,0 +1,39 @@
+{
+  "name": "@badminton/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "dev": "expo start",
+    "android": "expo run:android",
+    "android:clean": "sh -c \"npx expo prebuild --clean && cat <<EOF > android/local.properties\nsdk.dir=/Users/ashrefali/Library/Android/sdk\nEOF\"",
+    "ios": "expo run:ios",
+    "build": "echo 'expo build handled via EAS'",
+    "lint": "echo 'no lint configured'",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "@badminton/types": "file:./packages/types",
+    "@react-native-community/datetimepicker": "8.0.1",
+    "@react-navigation/bottom-tabs": "^6.6.1",
+    "@react-navigation/native": "^6.1.17",
+    "@react-navigation/native-stack": "^6.9.26",
+    "@types/react": "~18.2.79",
+    "axios": "^1.7.7",
+    "expo": "^51.0.11",
+    "expo-auth-session": "~5.5.2",
+    "expo-print": "~13.0.1",
+    "expo-sharing": "~12.0.1",
+    "expo-status-bar": "^1.12.1",
+    "expo-web-browser": "~13.0.3",
+    "react": "18.2.0",
+    "react-native": "0.74.2",
+    "react-native-safe-area-context": "^4.10.1",
+    "react-native-screens": "^3.31.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
