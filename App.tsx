@@ -16,10 +16,12 @@ import SessionBoardScreen from "./src/screens/SessionBoardScreen";
 import SessionSummaryScreen from "./src/screens/SessionSummaryScreen";
 import SessionsListScreen from "./src/screens/SessionsListScreen";
 import PlayersLeaderboardScreen from "./src/screens/PlayersLeaderboardScreen";
+import PlayerStatsScreen from "./src/screens/PlayerStatsScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import PlayersManageScreen from "./src/screens/PlayersManageScreen";
 import SessionGroupsScreen from "./src/screens/SessionGroupsScreen";
 import GroupSessionsScreen from "./src/screens/GroupSessionsScreen";
+import GroupPlayersScreen from "./src/screens/GroupPlayersScreen";
 import type {
   HomeStackParamList,
   RootTabParamList,
@@ -43,6 +45,7 @@ const HomeStackScreen = () => (
     <HomeStack.Screen name="SessionSummary" component={SessionSummaryScreen} />
     <HomeStack.Screen name="SessionsList" component={SessionsListScreen} />
     <HomeStack.Screen name="PlayersLeaderboard" component={PlayersLeaderboardScreen} />
+    <HomeStack.Screen name="PlayerStats" component={PlayerStatsScreen} />
   </HomeStack.Navigator>
 );
 
@@ -50,6 +53,7 @@ const SessionStackScreen = () => (
   <SessionStack.Navigator screenOptions={{ headerShown: true }}>
     <SessionStack.Screen name="SessionGroups" component={SessionGroupsScreen} />
     <SessionStack.Screen name="GroupSessions" component={GroupSessionsScreen} />
+    <SessionStack.Screen name="GroupPlayers" component={GroupPlayersScreen} />
     <SessionStack.Screen name="SessionCreate" component={SessionCreateScreen} />
     <SessionStack.Screen name="SessionBoard" component={SessionBoardScreen} />
     <SessionStack.Screen name="SessionSummary" component={SessionSummaryScreen} />

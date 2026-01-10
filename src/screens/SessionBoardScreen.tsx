@@ -23,6 +23,7 @@ type RoundAssignment = {
   courtId: string;
   teamA: [string, string];
   teamB: [string, string];
+  score?: { teamAScore: number; teamBScore: number } | null;
 };
 
 type RoundPlan = {
@@ -38,6 +39,7 @@ type SessionDetails = {
   startTime: string;
   endTime: string;
   roundMinutes: number;
+  groupId?: string | null;
   courts: { id: string; courtName: string; startTime: string; endTime: string }[];
   attendance: { playerId: string; player: { displayName: string; rating: number } }[];
 };
@@ -63,30 +65,55 @@ const Picker = ({
   options,
   selectedId,
   onSelect,
+  onClear,
 }: {
   label: string;
   options: PickerOption[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onClear?: () => void;
 }) => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const selectedLabel = options.find((option) => option.id === selectedId)?.label ?? "";
+  const displayValue = open ? search : selectedLabel || search;
   const filtered = options.filter((option) =>
     option.label.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <View style={styles.picker}>
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.pickerHeader}>
+        <Text style={styles.label}>{label}</Text>
+        {selectedId && onClear ? (
+          <Pressable onPress={onClear} hitSlop={8}>
+            <Text style={styles.clearText}>Clear</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {selectedId ? (
+        <View style={styles.chipRow}>
+          <View style={styles.chip}>
+            <Text style={styles.chipText}>{selectedLabel}</Text>
+            {onClear ? (
+              <Pressable onPress={onClear} hitSlop={8}>
+                <Text style={styles.chipClose}>×</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
       <TextInput
         style={styles.input}
-        value={selectedLabel || search}
+        value={displayValue}
         onChangeText={(value) => {
           setSearch(value);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setSearch("");
+          setOpen(true);
+        }}
         placeholder="Select"
       />
       {open && filtered.length > 0 && (
@@ -136,6 +163,23 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
   const lastSaved = useRef<Record<string, { a: string; b: string }>>({});
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const applySchedule = (scheduleData: { rounds?: RoundPlan[] }) => {
+    const nextRounds = scheduleData.rounds ?? [];
+    const nextScores: Record<string, { a: string; b: string }> = {};
+    nextRounds.forEach((round) => {
+      round.assignments.forEach((assignment) => {
+        if (assignment.score) {
+          nextScores[assignment.id] = {
+            a: String(assignment.score.teamAScore),
+            b: String(assignment.score.teamBScore),
+          };
+        }
+      });
+    });
+    setRounds(nextRounds);
+    setScores(nextScores);
+  };
+
   const attendanceCount = session?.attendance.length ?? 0;
   const attendanceIds = useMemo(() => {
     return new Set(session?.attendance.map((entry) => entry.playerId) ?? []);
@@ -163,10 +207,21 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       const response = await api.get(`/sessions/${sessionId}`);
       setSession(response.data);
       const scheduleRes = await api.get(`/sessions/${sessionId}/schedule`);
-      setRounds(scheduleRes.data.rounds ?? []);
+      applySchedule(scheduleRes.data);
     };
     load();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!session) return;
+    const loadPlayers = async () => {
+      const response = session.groupId
+        ? await api.get(`/groups/${session.groupId}/players`)
+        : await api.get("/players");
+      setPlayers(response.data ?? []);
+    };
+    loadPlayers();
+  }, [session]);
 
   useEffect(() => {
     if (!toast) return;
@@ -183,14 +238,6 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       setManualCourtId(session.courts[0].id);
     }
   }, [manualCourtId, session?.courts]);
-
-  useEffect(() => {
-    const loadPlayers = async () => {
-      const response = await api.get("/players");
-      setPlayers(response.data ?? []);
-    };
-    loadPlayers();
-  }, []);
 
   const addCourt = async () => {
     try {
@@ -234,6 +281,10 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       Alert.alert("Session not ready");
       return;
     }
+    if (!session) {
+      Alert.alert("Session not ready");
+      return;
+    }
     if (!playerName.trim()) {
       Alert.alert("Missing name", "Enter a player name.");
       return;
@@ -243,10 +294,15 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       Alert.alert("Invalid rating", "Use a rating between 1 and 10.");
       return;
     }
-    const playerRes = await api.post("/players", {
-      displayName: playerName.trim(),
-      rating,
-    });
+    const playerRes = session.groupId
+      ? await api.post(`/groups/${session.groupId}/players`, {
+          displayName: playerName.trim(),
+          rating,
+        })
+      : await api.post("/players", {
+        displayName: playerName.trim(),
+        rating,
+      });
     const arriveAt = lateArrivalMode ? new Date() : sessionWindow.start;
     const leaveAt = sessionWindow.end;
     if (lateArrivalMode) {
@@ -256,7 +312,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
         leaveAt: leaveAt.toISOString(),
       });
       const scheduleRes = await api.get(`/sessions/${sessionId}/schedule`);
-      setRounds(scheduleRes.data.rounds ?? []);
+      applySchedule(scheduleRes.data);
     } else {
       await api.post(`/sessions/${sessionId}/players`, {
         playerId: playerRes.data.id,
@@ -267,7 +323,9 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
     setPlayerName("");
     const response = await api.get(`/sessions/${sessionId}`);
     setSession(response.data);
-    const playersResponse = await api.get("/players");
+    const playersResponse = session.groupId
+      ? await api.get(`/groups/${session.groupId}/players`)
+      : await api.get("/players");
     setPlayers(playersResponse.data ?? []);
   };
 
@@ -286,7 +344,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
           leaveAt: leaveAt.toISOString(),
         });
         const scheduleRes = await api.get(`/sessions/${sessionId}/schedule`);
-        setRounds(scheduleRes.data.rounds ?? []);
+        applySchedule(scheduleRes.data);
       } else {
         await api.post(`/sessions/${sessionId}/players`, {
           playerId,
@@ -323,7 +381,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       : `/sessions/${sessionId}/generate-schedule`;
     try {
       const response = await api.post(endpoint, {});
-      setRounds(response.data.rounds ?? []);
+      applySchedule(response.data);
       setToast({
         message: lateArrivalMode
           ? "Remaining rounds regenerated."
@@ -361,7 +419,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
         teamBPlayer2Id: manualTeamB2,
         courtId: manualCourtId,
       });
-      setRounds(response.data.rounds ?? []);
+      applySchedule(response.data);
       setManualTeamA1(null);
       setManualTeamA2(null);
       setManualTeamB1(null);
@@ -585,6 +643,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
             })) ?? []}
             selectedId={manualTeamA1}
             onSelect={setManualTeamA1}
+            onClear={() => setManualTeamA1(null)}
           />
           <Picker
             label="Team A - Player 2"
@@ -594,6 +653,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
             })) ?? []}
             selectedId={manualTeamA2}
             onSelect={setManualTeamA2}
+            onClear={() => setManualTeamA2(null)}
           />
           <Picker
             label="Team B - Player 1"
@@ -603,6 +663,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
             })) ?? []}
             selectedId={manualTeamB1}
             onSelect={setManualTeamB1}
+            onClear={() => setManualTeamB1(null)}
           />
           <Picker
             label="Team B - Player 2"
@@ -612,6 +673,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
             })) ?? []}
             selectedId={manualTeamB2}
             onSelect={setManualTeamB2}
+            onClear={() => setManualTeamB2(null)}
           />
           <Picker
             label="Court"
@@ -621,6 +683,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
             })) ?? []}
             selectedId={manualCourtId}
             onSelect={setManualCourtId}
+            onClear={() => setManualCourtId(null)}
           />
           <AppButton title="Add manual match" onPress={addManualMatch} />
         </View>
@@ -816,6 +879,42 @@ const styles = StyleSheet.create({
   },
   picker: {
     gap: 6,
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  clearText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.accent,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: theme.colors.soft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  chipText: {
+    fontSize: 12,
+    color: theme.colors.ink,
+    fontWeight: "600",
+  },
+  chipClose: {
+    fontSize: 14,
+    color: theme.colors.muted,
+    fontWeight: "700",
   },
   dropdown: {
     borderWidth: 1,

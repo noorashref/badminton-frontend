@@ -5,7 +5,8 @@ export type HomeStackParamList = {
   MatchDetail: { matchId: string };
   SessionSummary: { sessionId: string };
   SessionsList: undefined;
-  PlayersLeaderboard: undefined;
+  PlayersLeaderboard: { groupId: string };
+  PlayerStats: { groupId: string; playerId: string };
 };
 
 export type SettingsStackParamList = {
@@ -22,6 +23,7 @@ export type RootTabParamList = {
 export type SessionStackParamList = {
   SessionGroups: undefined;
   GroupSessions: { groupId: string };
+  GroupPlayers: { groupId: string };
   SessionCreate: { groupId?: string } | undefined;
   SessionBoard: { sessionId: string };
   SessionSummary: { sessionId: string };

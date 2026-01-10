@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SessionStackParamList } from "../navigation/types";
 import api from "../api/client";
@@ -38,6 +38,20 @@ export default function GroupSessionsScreen({ route, navigation }: Props) {
     load();
   }, [groupId]);
 
+  const deleteSession = (sessionId: string) => {
+    Alert.alert("Delete session", "This will remove the session and all its matches.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await api.delete(`/sessions/${sessionId}`);
+          await load();
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -50,6 +64,11 @@ export default function GroupSessionsScreen({ route, navigation }: Props) {
           <AppButton
             title="Create Session"
             onPress={() => navigation.navigate("SessionCreate", { groupId })}
+          />
+          <AppButton
+            variant="secondary"
+            title="Manage Players"
+            onPress={() => navigation.navigate("GroupPlayers", { groupId })}
           />
         </View>
         {sessions.length === 0 ? (
@@ -74,6 +93,11 @@ export default function GroupSessionsScreen({ route, navigation }: Props) {
                   onPress={() => navigation.navigate("SessionBoard", { sessionId: session.id })}
                 />
               )}
+              <AppButton
+                variant="ghost"
+                title="Delete"
+                onPress={() => deleteSession(session.id)}
+              />
             </View>
           ))
         )}

@@ -29,7 +29,6 @@ export default function SessionGroupsScreen({ navigation }: Props) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupName, setGroupName] = useState("");
   const [groupVisibility, setGroupVisibility] = useState<"PUBLIC" | "PRIVATE">("PRIVATE");
-  const [inviteCode, setInviteCode] = useState("");
 
   const load = async () => {
     const response = await api.get("/groups");
@@ -53,16 +52,6 @@ export default function SessionGroupsScreen({ navigation }: Props) {
     }
     await api.post("/groups", { name: groupName.trim(), visibility: groupVisibility });
     setGroupName("");
-    await load();
-  };
-
-  const joinGroup = async (groupId: string) => {
-    if (!inviteCode.trim()) {
-      Alert.alert("Invite code required");
-      return;
-    }
-    await api.post(`/groups/${groupId}/join`, { inviteCode: inviteCode.trim() });
-    setInviteCode("");
     await load();
   };
 
@@ -90,7 +79,7 @@ export default function SessionGroupsScreen({ navigation }: Props) {
         <View style={styles.header}>
           <Text style={styles.kicker}>Session hub</Text>
           <Text style={styles.title}>My Groups</Text>
-          <Text style={styles.subtitle}>Create a group or join one with a code.</Text>
+          <Text style={styles.subtitle}>Create a group and manage sessions.</Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Create Group</Text>
@@ -109,16 +98,6 @@ export default function SessionGroupsScreen({ navigation }: Props) {
           />
           <AppButton title="Create Group" onPress={createGroup} />
         </View>
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Join Group</Text>
-          <TextInput
-            style={styles.input}
-            value={inviteCode}
-            onChangeText={setInviteCode}
-            placeholder="Invite code"
-          />
-          <Text style={styles.helper}>Select a group below to join with this code.</Text>
-        </View>
         {groups.length === 0 ? (
           <Text style={styles.helper}>No groups yet.</Text>
         ) : (
@@ -132,7 +111,6 @@ export default function SessionGroupsScreen({ navigation }: Props) {
                   title="Open"
                   onPress={() => navigation.navigate("GroupSessions", { groupId: group.id })}
                 />
-                <AppButton title="Join" onPress={() => joinGroup(group.id)} />
                 {group.isOwner && (
                   <AppButton variant="ghost" title="Delete" onPress={() => deleteGroup(group.id)} />
                 )}

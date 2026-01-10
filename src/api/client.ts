@@ -1,8 +1,12 @@
 import axios from "axios";
+import { Platform } from "react-native";
 import { useAuthStore } from "../store/useAuthStore";
 
+const baseURL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://smashref.solvvtech.com";
+
 const api = axios.create({
-  baseURL: "http://10.0.2.2:3000",
+  baseURL,
 });
 
 api.interceptors.request.use((config) => {

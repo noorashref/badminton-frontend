@@ -14,7 +14,11 @@
     "splash": {
       "backgroundColor": "#f6f4ef"
     },
-    "extra": {},
+    "extra": {
+      "eas": {
+        "projectId": "00ccb3f7-31bd-4bbd-8aee-0212e0907c96"
+      }
+    },
     "android": {
       "package": "com.smashref.badminton"
     },
