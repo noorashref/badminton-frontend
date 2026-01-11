@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
 import type { SessionStackParamList } from "../navigation/types";
 import api from "../api/client";
 import type { AxiosError } from "axios";
@@ -55,90 +56,6 @@ type ToastState = {
   variant: "success" | "error";
 };
 
-type PickerOption = {
-  id: string;
-  label: string;
-};
-
-const Picker = ({
-  label,
-  options,
-  selectedId,
-  onSelect,
-  onClear,
-}: {
-  label: string;
-  options: PickerOption[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onClear?: () => void;
-}) => {
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const selectedLabel = options.find((option) => option.id === selectedId)?.label ?? "";
-  const displayValue = open ? search : selectedLabel || search;
-  const filtered = options.filter((option) =>
-    option.label.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <View style={styles.picker}>
-      <View style={styles.pickerHeader}>
-        <Text style={styles.label}>{label}</Text>
-        {selectedId && onClear ? (
-          <Pressable onPress={onClear} hitSlop={8}>
-            <Text style={styles.clearText}>Clear</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {selectedId ? (
-        <View style={styles.chipRow}>
-          <View style={styles.chip}>
-            <Text style={styles.chipText}>{selectedLabel}</Text>
-            {onClear ? (
-              <Pressable onPress={onClear} hitSlop={8}>
-                <Text style={styles.chipClose}>×</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
-      <TextInput
-        style={styles.input}
-        value={displayValue}
-        onChangeText={(value) => {
-          setSearch(value);
-          setOpen(true);
-        }}
-        onFocus={() => {
-          setSearch("");
-          setOpen(true);
-        }}
-        placeholder="Select"
-      />
-      {open && filtered.length > 0 && (
-        <View style={styles.dropdown}>
-          <ScrollView style={styles.dropdownList} keyboardShouldPersistTaps="handled">
-            {filtered.map((option) => (
-              <Pressable
-                key={option.id}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  onSelect(option.id);
-                  setSearch("");
-                  setOpen(false);
-                }}
-              >
-                <Text style={styles.dropdownText}>{option.label}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-    </View>
-  );
-};
-
 export default function SessionBoardScreen({ route, navigation }: Props) {
   const { sessionId } = route.params;
   const [rounds, setRounds] = useState<RoundPlan[]>([]);
@@ -150,46 +67,41 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
   const [players, setPlayers] = useState<PlayerItem[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showPlayerList, setShowPlayerList] = useState(false);
-  const [scores, setScores] = useState<Record<string, { a: string; b: string }>>({});
   const [playerSearch, setPlayerSearch] = useState("");
   const [lateArrivalMode, setLateArrivalMode] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [manualTeamA1, setManualTeamA1] = useState<string | null>(null);
-  const [manualTeamA2, setManualTeamA2] = useState<string | null>(null);
-  const [manualTeamB1, setManualTeamB1] = useState<string | null>(null);
-  const [manualTeamB2, setManualTeamB2] = useState<string | null>(null);
-  const [manualCourtId, setManualCourtId] = useState<string | null>(null);
-  const saveTimers = useRef<Record<string, NodeJS.Timeout>>({});
-  const lastSaved = useRef<Record<string, { a: string; b: string }>>({});
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
   const applySchedule = (scheduleData: { rounds?: RoundPlan[] }) => {
     const nextRounds = scheduleData.rounds ?? [];
-    const nextScores: Record<string, { a: string; b: string }> = {};
-    nextRounds.forEach((round) => {
+    setRounds(nextRounds);
+  };
+
+  const gamesByPlayerId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    rounds.forEach((round) => {
       round.assignments.forEach((assignment) => {
-        if (assignment.score) {
-          nextScores[assignment.id] = {
-            a: String(assignment.score.teamAScore),
-            b: String(assignment.score.teamBScore),
-          };
-        }
+        [...assignment.teamA, ...assignment.teamB].forEach((playerId) => {
+          counts[playerId] = (counts[playerId] ?? 0) + 1;
+        });
       });
     });
-    setRounds(nextRounds);
-    setScores(nextScores);
-  };
+    return counts;
+  }, [rounds]);
+  const playerTotals = useMemo(() => {
+    if (!session) return [];
+    return session.attendance
+      .map((entry) => ({
+        id: entry.playerId,
+        name: entry.player.displayName,
+        games: gamesByPlayerId[entry.playerId] ?? 0,
+      }))
+      .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+  }, [gamesByPlayerId, session]);
 
   const attendanceCount = session?.attendance.length ?? 0;
   const attendanceIds = useMemo(() => {
     return new Set(session?.attendance.map((entry) => entry.playerId) ?? []);
-  }, [session]);
-  const playerNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    session?.attendance.forEach((entry) => {
-      map.set(entry.playerId, entry.player.displayName);
-    });
-    return map;
   }, [session]);
   const availablePlayers = useMemo(() => {
     return players.filter((player) => !attendanceIds.has(player.id));
@@ -202,15 +114,29 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
     };
   }, [session]);
 
-  useEffect(() => {
-    const load = async () => {
+  const loadSession = useCallback(async () => {
+    try {
       const response = await api.get(`/sessions/${sessionId}`);
       setSession(response.data);
       const scheduleRes = await api.get(`/sessions/${sessionId}/schedule`);
       applySchedule(scheduleRes.data);
-    };
-    load();
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      if (err.response?.status === 401) return;
+      const message = err.response?.data?.message ?? err.message;
+      setToast({ message: `Load failed: ${message}`, variant: "error" });
+    }
   }, [sessionId]);
+
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSession();
+    }, [loadSession])
+  );
 
   useEffect(() => {
     if (!session) return;
@@ -232,12 +158,6 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       setToast(null);
     }, 2400);
   }, [toast]);
-
-  useEffect(() => {
-    if (!manualCourtId && session?.courts?.length) {
-      setManualCourtId(session.courts[0].id);
-    }
-  }, [manualCourtId, session?.courts]);
 
   const addCourt = async () => {
     try {
@@ -329,6 +249,28 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
     setPlayers(playersResponse.data ?? []);
   };
 
+  const removePlayer = async (playerId: string) => {
+    try {
+      const response = await api.delete(`/sessions/${sessionId}/players/${playerId}`);
+      applySchedule(response.data);
+      const sessionRes = await api.get(`/sessions/${sessionId}`);
+      setSession(sessionRes.data);
+      setToast({ message: "Player removed.", variant: "success" });
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      const status = err.response?.status;
+      const message = err.response?.data?.message ?? err.message;
+      if (status === 404) {
+        Alert.alert("Remove player failed", "Server update required for this action.");
+        return;
+      }
+      Alert.alert(
+        "Remove player failed",
+        status ? `Status ${status}: ${message}` : `Network error: ${message}`
+      );
+    }
+  };
+
   const addExistingPlayer = async (playerId: string) => {
     try {
       if (!sessionWindow) {
@@ -369,22 +311,28 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
   };
 
   const generateSchedule = async () => {
-    if (!session || session.courts.length === 0 || attendanceCount < 4) {
+    if (!session || attendanceCount < 4) {
       Alert.alert(
         "Missing setup",
-        "Add at least 1 court and 4 players before generating."
+        "Add at least 4 players before generating."
       );
       return;
     }
-    const endpoint = lateArrivalMode
-      ? `/sessions/${sessionId}/regenerate-remaining`
-      : `/sessions/${sessionId}/generate-schedule`;
+    const hasScores = rounds.some((round) =>
+      round.assignments.some((assignment) => assignment.score)
+    );
+    const endpoint =
+      lateArrivalMode || hasScores
+        ? `/sessions/${sessionId}/regenerate-remaining`
+        : `/sessions/${sessionId}/generate-schedule`;
     try {
       const response = await api.post(endpoint, {});
       applySchedule(response.data);
       setToast({
         message: lateArrivalMode
           ? "Remaining rounds regenerated."
+          : hasScores
+          ? "Scores kept. Remaining rounds regenerated."
           : "Schedule generated.",
         variant: "success",
       });
@@ -398,123 +346,6 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
     }
   };
 
-  const addManualMatch = async () => {
-    if (!manualTeamA1 || !manualTeamA2 || !manualTeamB1 || !manualTeamB2) {
-      Alert.alert("Pick players", "Select 4 players for the manual match.");
-      return;
-    }
-    if (new Set([manualTeamA1, manualTeamA2, manualTeamB1, manualTeamB2]).size < 4) {
-      Alert.alert("Duplicate player", "Each player must be unique.");
-      return;
-    }
-    if (!manualCourtId) {
-      Alert.alert("Pick a court", "Add or select a court first.");
-      return;
-    }
-    try {
-      const response = await api.post(`/sessions/${sessionId}/manual-match`, {
-        teamAPlayer1Id: manualTeamA1,
-        teamAPlayer2Id: manualTeamA2,
-        teamBPlayer1Id: manualTeamB1,
-        teamBPlayer2Id: manualTeamB2,
-        courtId: manualCourtId,
-      });
-      applySchedule(response.data);
-      setManualTeamA1(null);
-      setManualTeamA2(null);
-      setManualTeamB1(null);
-      setManualTeamB2(null);
-    } catch (error) {
-      const err = error as AxiosError<{ message?: string }>;
-      const status = err.response?.status;
-      const message = err.response?.data?.message ?? err.message;
-      Alert.alert(
-        "Manual match failed",
-        status ? `Status ${status}: ${message}` : `Network error: ${message}`
-      );
-    }
-  };
-
-  const saveScore = async (assignment: RoundAssignment, silent = false) => {
-    try {
-      const score = scores[assignment.id] ?? { a: "", b: "" };
-      const teamAScore = Number(score.a);
-      const teamBScore = Number(score.b);
-      if (!Number.isFinite(teamAScore) || !Number.isFinite(teamBScore)) {
-        if (!silent) {
-          Alert.alert("Invalid score", "Enter numeric scores.");
-        }
-        return;
-      }
-      await api.post(`/sessions/${sessionId}/assignments/${assignment.id}/score`, {
-        teamAScore,
-        teamBScore,
-      });
-      lastSaved.current[assignment.id] = { a: score.a, b: score.b };
-      if (!silent) {
-        setToast({ message: "Score saved.", variant: "success" });
-      }
-    } catch (error) {
-      const err = error as AxiosError<{ message?: string }>;
-      const status = err.response?.status;
-      const message = err.response?.data?.message ?? err.message;
-      if (!silent) {
-        setToast({
-          message: status ? `Save failed: ${message}` : `Save failed: ${message}`,
-          variant: "error",
-        });
-      }
-    }
-  };
-
-  const scheduleAutoSave = (assignment: RoundAssignment, nextScore?: { a: string; b: string }) => {
-    const score = nextScore ?? scores[assignment.id];
-    if (!score) return;
-    if (saveTimers.current[assignment.id]) {
-      clearTimeout(saveTimers.current[assignment.id]);
-    }
-    saveTimers.current[assignment.id] = setTimeout(() => {
-      const last = lastSaved.current[assignment.id];
-      if (last && last.a === score.a && last.b === score.b) {
-        return;
-      }
-      saveScore(assignment, true);
-    }, 700);
-  };
-
-  const finishSession = async () => {
-    try {
-      await api.post(`/sessions/${sessionId}/finish`, {});
-      Alert.alert("Session finished", "Games saved successfully.", [
-        {
-          text: "OK",
-          onPress: () => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "SessionGroups" as never }],
-            });
-            const parent = navigation.getParent();
-            if (parent) {
-              parent.navigate("HomeTab" as never, {
-                screen: "Home",
-                params: { refreshKey: Date.now() },
-              } as never);
-            } else {
-              navigation.navigate("Home" as never);
-            }
-          },
-        },
-      ]);
-    } catch (error) {
-      const err = error as AxiosError<{ message?: string }>;
-      const status = err.response?.status;
-      const message = err.response?.data?.message ?? err.message;
-      Alert.alert(
-        "Finish failed",
-        status ? `Status ${status}: ${message}` : `Network error: ${message}`
-      );
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -527,7 +358,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
           <Text style={styles.kicker}>Live session</Text>
           <Text style={styles.title}>Session Board</Text>
           <Text style={styles.subtitle}>
-            Manage courts, players, schedules, and scores in one view.
+            Manage courts, players, and schedules for this session.
           </Text>
         </View>
         <View style={styles.section}>
@@ -544,7 +375,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
         />
         <AppButton title="Add Court" onPress={addCourt} />
         <Text style={styles.helper}>
-          Courts run from session start time for the duration you set.
+          Courts are optional. The scheduler uses the session duration and round length.
         </Text>
         <Text style={styles.count}>Courts added: {session?.courts.length ?? 0}</Text>
         {session?.courts.map((court) => (
@@ -623,136 +454,82 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
         <AppButton title="Add Player" onPress={addPlayer} />
         <Text style={styles.helper}>Players are added for the full session window.</Text>
         <Text style={styles.count}>Total players: {attendanceCount}</Text>
+        {attendanceCount > 0 && (
+          <View style={styles.rosterWrap}>
+            {session?.attendance.map((entry) => {
+              const initials = entry.player.displayName
+                .split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((part) => part[0]?.toUpperCase())
+                .join("");
+              return (
+                <View key={entry.playerId} style={styles.rosterItem}>
+                  <View style={styles.rosterAvatar}>
+                    <Text style={styles.rosterAvatarText}>{initials || "?"}</Text>
+                  </View>
+                  <Pressable
+                    style={styles.rosterRemove}
+                    onPress={() =>
+                      Alert.alert(
+                        "Remove player",
+                        `Remove ${entry.player.displayName} from this session?`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Remove",
+                            style: "destructive",
+                            onPress: () => removePlayer(entry.playerId),
+                          },
+                        ]
+                      )
+                    }
+                    hitSlop={8}
+                  >
+                    <Text style={styles.rosterRemoveText}>×</Text>
+                  </Pressable>
+                  <Text style={styles.rosterName} numberOfLines={1}>
+                    {entry.player.displayName}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
         </View>
         <View style={styles.actions}>
           <AppButton
             title={lateArrivalMode ? "Regenerate remaining rounds" : "Generate Matches"}
             onPress={generateSchedule}
           />
+          <AppButton
+            variant="secondary"
+            title="View Matches"
+            onPress={() => navigation.navigate("SessionMatches", { sessionId })}
+          />
+          <AppButton
+            variant="secondary"
+            title="Manual Match"
+            onPress={() => navigation.navigate("ManualMatch", { sessionId })}
+          />
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Manual match (optional)</Text>
+          <Text style={styles.sectionTitle}>Games per player</Text>
           <Text style={styles.helper}>
-            Pair players manually and record the score in this session.
+            Totals update after generating matches.
           </Text>
-          <Picker
-            label="Team A - Player 1"
-            options={session?.attendance.map((entry) => ({
-              id: entry.playerId,
-              label: entry.player.displayName,
-            })) ?? []}
-            selectedId={manualTeamA1}
-            onSelect={setManualTeamA1}
-            onClear={() => setManualTeamA1(null)}
-          />
-          <Picker
-            label="Team A - Player 2"
-            options={session?.attendance.map((entry) => ({
-              id: entry.playerId,
-              label: entry.player.displayName,
-            })) ?? []}
-            selectedId={manualTeamA2}
-            onSelect={setManualTeamA2}
-            onClear={() => setManualTeamA2(null)}
-          />
-          <Picker
-            label="Team B - Player 1"
-            options={session?.attendance.map((entry) => ({
-              id: entry.playerId,
-              label: entry.player.displayName,
-            })) ?? []}
-            selectedId={manualTeamB1}
-            onSelect={setManualTeamB1}
-            onClear={() => setManualTeamB1(null)}
-          />
-          <Picker
-            label="Team B - Player 2"
-            options={session?.attendance.map((entry) => ({
-              id: entry.playerId,
-              label: entry.player.displayName,
-            })) ?? []}
-            selectedId={manualTeamB2}
-            onSelect={setManualTeamB2}
-            onClear={() => setManualTeamB2(null)}
-          />
-          <Picker
-            label="Court"
-            options={session?.courts.map((court) => ({
-              id: court.id,
-              label: court.courtName,
-            })) ?? []}
-            selectedId={manualCourtId}
-            onSelect={setManualCourtId}
-            onClear={() => setManualCourtId(null)}
-          />
-          <AppButton title="Add manual match" onPress={addManualMatch} />
-        </View>
-        {rounds.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Matches</Text>
-            {rounds.map((round) => (
-              <View key={round.roundIndex} style={styles.roundCard}>
-                <Text style={styles.roundTitle}>Round {round.roundIndex + 1}</Text>
-                {round.assignments.map((assignment) => (
-                  <View key={assignment.id} style={styles.matchRow}>
-                    <Text style={styles.assignment}>
-                      {playerNameById.get(assignment.teamA[0]) ?? assignment.teamA[0]}{" "}
-                      & {playerNameById.get(assignment.teamA[1]) ?? assignment.teamA[1]}{" "}
-                      vs {playerNameById.get(assignment.teamB[0]) ?? assignment.teamB[0]}{" "}
-                      & {playerNameById.get(assignment.teamB[1]) ?? assignment.teamB[1]}
-                    </Text>
-                    <View style={styles.scoreRow}>
-                      <TextInput
-                        style={styles.scoreInput}
-                        value={scores[assignment.id]?.a ?? ""}
-                        onChangeText={(value) => {
-                          const next = {
-                            a: value,
-                            b: scores[assignment.id]?.b ?? "",
-                          };
-                          setScores((prev) => ({
-                            ...prev,
-                            [assignment.id]: next,
-                          }));
-                          scheduleAutoSave(assignment, next);
-                        }}
-                        onBlur={() => scheduleAutoSave(assignment)}
-                        keyboardType="number-pad"
-                        placeholder="A"
-                      />
-                      <Text style={styles.scoreDash}>-</Text>
-                      <TextInput
-                        style={styles.scoreInput}
-                        value={scores[assignment.id]?.b ?? ""}
-                        onChangeText={(value) => {
-                          const next = {
-                            a: scores[assignment.id]?.a ?? "",
-                            b: value,
-                          };
-                          setScores((prev) => ({
-                            ...prev,
-                            [assignment.id]: next,
-                          }));
-                          scheduleAutoSave(assignment, next);
-                        }}
-                        onBlur={() => scheduleAutoSave(assignment)}
-                        keyboardType="number-pad"
-                        placeholder="B"
-                      />
-                      <AppButton
-                        variant="ghost"
-                        title="Save"
-                        onPress={() => saveScore(assignment)}
-                      />
-                    </View>
-                  </View>
-                ))}
+          {playerTotals.length === 0 ? (
+            <Text style={styles.helper}>No players yet.</Text>
+          ) : (
+            playerTotals.map((player) => (
+              <View key={player.id} style={styles.totalRow}>
+                <Text style={styles.totalName} numberOfLines={1}>
+                  {player.name}
+                </Text>
+                <Text style={styles.totalValue}>{player.games}</Text>
               </View>
-            ))}
-          </View>
-        )}
-        <View style={styles.section}>
-          <AppButton title="Finish Session" onPress={finishSession} />
+            ))
+          )}
         </View>
       </ScrollView>
       {toast && (
@@ -814,8 +591,9 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
   },
   actions: {
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 12,
+    alignItems: "stretch",
   },
   helper: {
     fontSize: 12,
@@ -877,64 +655,68 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     justifyContent: "center",
   },
-  picker: {
-    gap: 6,
-  },
-  pickerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  clearText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.accent,
-  },
-  chipRow: {
+  rosterWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
-  chip: {
-    flexDirection: "row",
+  rosterItem: {
     alignItems: "center",
+    width: 72,
     gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
+    position: "relative",
+  },
+  rosterAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.soft,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  chipText: {
+  rosterRemove: {
+    position: "absolute",
+    top: -2,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#f3d4d4",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#e2a9a9",
+  },
+  rosterRemoveText: {
     fontSize: 12,
-    color: theme.colors.ink,
-    fontWeight: "600",
-  },
-  chipClose: {
-    fontSize: 14,
-    color: theme.colors.muted,
     fontWeight: "700",
+    color: "#8a1c1c",
+    lineHeight: 12,
+  },
+  rosterAvatarText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: theme.colors.ink,
+  },
+  rosterName: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    textAlign: "center",
   },
   dropdown: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.input,
     backgroundColor: theme.colors.card,
-    maxHeight: 160,
+    maxHeight: 180,
     overflow: "hidden",
     zIndex: 10,
     elevation: 3,
   },
-  searchInput: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: theme.colors.card,
-  },
   dropdownList: {
-    maxHeight: 160,
+    maxHeight: 180,
   },
   dropdownItem: {
     padding: 10,
@@ -944,6 +726,25 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontSize: 14,
     color: theme.colors.ink,
+  },
+  totalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  totalName: {
+    flex: 1,
+    fontSize: 14,
+    color: theme.colors.ink,
+    marginRight: 12,
+  },
+  totalValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: theme.colors.accent,
   },
   toast: {
     position: "absolute",

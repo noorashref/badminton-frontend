@@ -9,6 +9,7 @@
       "ios",
       "android"
     ],
+    "icon": "./app_icon_badminton.png",
     "sdkVersion": "51.0.0",
     "userInterfaceStyle": "light",
     "splash": {
@@ -20,7 +21,11 @@
       }
     },
     "android": {
-      "package": "com.smashref.badminton"
+      "package": "com.smashref.badminton",
+      "adaptiveIcon": {
+        "foregroundImage": "./app_icon_badminton.png",
+        "backgroundColor": "#f6f4ef"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.smashref.badminton"

@@ -4,6 +4,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,6 +23,10 @@ const formatDate = (date: Date) =>
 const formatTime = (date: Date) => `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 const setDateOnTime = (time: Date, date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes());
+const addHours = (date: Date, hours: number) =>
+  new Date(date.getTime() + hours * 60 * 60 * 1000);
+
+const DURATION_PRESETS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 
 type Props = NativeStackScreenProps<SessionStackParamList, "SessionCreate">;
 
@@ -31,16 +36,21 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
   const [sessionDate, setSessionDate] = useState(new Date());
   const [startDateTime, setStartDateTime] = useState(new Date());
   const [endDateTime, setEndDateTime] = useState(
-    new Date(Date.now() + 2 * 60 * 60 * 1000)
+    new Date(Date.now() + 2.5 * 60 * 60 * 1000)
   );
   const [roundMinutes, setRoundMinutes] = useState("15");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<number | null>(2.5);
   const roundLabel = useMemo(
     () => `Round length (minutes) — e.g. 10, 15, 20`,
     []
   );
+  const applyDuration = (hours: number) => {
+    setSelectedDuration(hours);
+    setEndDateTime(addHours(startDateTime, hours));
+  };
 
   const createSession = async () => {
     try {
@@ -61,12 +71,13 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
         <Text style={styles.kicker}>Session</Text>
         <Text style={styles.title}>Create Session</Text>
         <Text style={styles.subtitle}>Set a name, time, and round length.</Text>
-      </View>
-      <View style={styles.form}>
+        </View>
+        <View style={styles.form}>
         <Text style={styles.label}>Session name</Text>
         <TextInput
           style={styles.input}
@@ -95,6 +106,28 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
         >
           <Text style={styles.inputText}>{formatTime(endDateTime)}</Text>
         </Pressable>
+        <Text style={styles.label}>Duration presets</Text>
+        <View style={styles.presetRow}>
+          {DURATION_PRESETS.map((hours) => (
+            <Pressable
+              key={hours}
+              style={[
+                styles.presetChip,
+                selectedDuration === hours ? styles.presetChipActive : null,
+              ]}
+              onPress={() => applyDuration(hours)}
+            >
+              <Text
+                style={[
+                  styles.presetText,
+                  selectedDuration === hours ? styles.presetTextActive : null,
+                ]}
+              >
+                {hours}h
+              </Text>
+            </Pressable>
+          ))}
+        </View>
         <Text style={styles.label}>{roundLabel}</Text>
         <TextInput
           style={styles.input}
@@ -107,7 +140,8 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
           This is how long each game round lasts. The scheduler builds rounds using this value.
         </Text>
         <AppButton title="Create" onPress={createSession} />
-      </View>
+        </View>
+      </ScrollView>
       {showDatePicker && (
         <DateTimePicker
           value={sessionDate}
@@ -131,6 +165,9 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
             const picked = selected ?? startDateTime;
             setShowStartPicker(Platform.OS === "ios");
             setStartDateTime(setDateOnTime(picked, sessionDate));
+            if (selectedDuration) {
+              setEndDateTime(addHours(setDateOnTime(picked, sessionDate), selectedDuration));
+            }
           }}
         />
       )}
@@ -143,6 +180,7 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
             const picked = selected ?? endDateTime;
             setShowEndPicker(Platform.OS === "ios");
             setEndDateTime(setDateOnTime(picked, sessionDate));
+            setSelectedDuration(null);
           }}
         />
       )}
@@ -153,8 +191,10 @@ export default function SessionCreateScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
     backgroundColor: theme.colors.background,
+  },
+  content: {
+    padding: 24,
     gap: 16,
   },
   header: {
@@ -199,5 +239,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.muted,
     marginTop: -6,
+  },
+  presetRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  presetChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  presetChipActive: {
+    borderColor: theme.colors.accent,
+    backgroundColor: theme.colors.soft,
+  },
+  presetText: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    fontWeight: "600",
+  },
+  presetTextActive: {
+    color: theme.colors.ink,
   },
 });

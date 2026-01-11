@@ -8,8 +8,8 @@ import { AppButton } from "../ui/Buttons";
 import { theme } from "../ui/theme";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("admin@badminton.app");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const setToken = useAuthStore((state) => state.setToken);
   const navigation = useNavigation();
 

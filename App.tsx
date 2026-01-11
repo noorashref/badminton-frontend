@@ -13,6 +13,7 @@ import FixturesScreen from "./src/screens/FixturesScreen";
 import MatchDetailScreen from "./src/screens/MatchDetailScreen";
 import SessionCreateScreen from "./src/screens/SessionCreateScreen";
 import SessionBoardScreen from "./src/screens/SessionBoardScreen";
+import SessionMatchesScreen from "./src/screens/SessionMatchesScreen";
 import SessionSummaryScreen from "./src/screens/SessionSummaryScreen";
 import SessionsListScreen from "./src/screens/SessionsListScreen";
 import PlayersLeaderboardScreen from "./src/screens/PlayersLeaderboardScreen";
@@ -22,6 +23,7 @@ import PlayersManageScreen from "./src/screens/PlayersManageScreen";
 import SessionGroupsScreen from "./src/screens/SessionGroupsScreen";
 import GroupSessionsScreen from "./src/screens/GroupSessionsScreen";
 import GroupPlayersScreen from "./src/screens/GroupPlayersScreen";
+import ManualMatchScreen from "./src/screens/ManualMatchScreen";
 import type {
   HomeStackParamList,
   RootTabParamList,
@@ -56,6 +58,8 @@ const SessionStackScreen = () => (
     <SessionStack.Screen name="GroupPlayers" component={GroupPlayersScreen} />
     <SessionStack.Screen name="SessionCreate" component={SessionCreateScreen} />
     <SessionStack.Screen name="SessionBoard" component={SessionBoardScreen} />
+    <SessionStack.Screen name="SessionMatches" component={SessionMatchesScreen} />
+    <SessionStack.Screen name="ManualMatch" component={ManualMatchScreen} />
     <SessionStack.Screen name="SessionSummary" component={SessionSummaryScreen} />
   </SessionStack.Navigator>
 );

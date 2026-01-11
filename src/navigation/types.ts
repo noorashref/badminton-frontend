@@ -26,5 +26,7 @@ export type SessionStackParamList = {
   GroupPlayers: { groupId: string };
   SessionCreate: { groupId?: string } | undefined;
   SessionBoard: { sessionId: string };
+  SessionMatches: { sessionId: string };
+  ManualMatch: { sessionId: string };
   SessionSummary: { sessionId: string };
 };
