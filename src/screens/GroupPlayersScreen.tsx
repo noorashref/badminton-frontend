@@ -33,6 +33,7 @@ export default function GroupPlayersScreen({ route }: Props) {
   const [isOwner, setIsOwner] = useState(false);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingRating, setEditingRating] = useState("5");
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     const response = await api.get(
@@ -117,6 +118,24 @@ export default function GroupPlayersScreen({ route }: Props) {
     () => players.filter((player) => !player.isActive),
     [players]
   );
+  const filteredActive = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const list = term
+      ? activePlayers.filter((player) =>
+          player.displayName.toLowerCase().includes(term)
+        )
+      : activePlayers;
+    return list;
+  }, [activePlayers, search]);
+  const filteredInactive = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const list = term
+      ? inactivePlayers.filter((player) =>
+          player.displayName.toLowerCase().includes(term)
+        )
+      : inactivePlayers;
+    return list;
+  }, [inactivePlayers, search]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -139,17 +158,28 @@ export default function GroupPlayersScreen({ route }: Props) {
           <AppButton title="Add" onPress={addPlayer} />
         </View>
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>All Players</Text>
-          <View style={styles.toggleRow}>
-            <Text style={styles.helper}>Show inactive</Text>
-            <Switch value={showInactive} onValueChange={setShowInactive} />
+          <View style={styles.playersHeader}>
+            <Text style={styles.sectionTitle}>Players</Text>
+            <View style={styles.toggleRow}>
+              <Text style={styles.helper}>Show inactive</Text>
+              <Switch value={showInactive} onValueChange={setShowInactive} />
+            </View>
           </View>
-          {activePlayers.map((player) => (
-            <View key={player.id} style={styles.row}>
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowText}>
-                  {player.displayName} (rating {player.rating})
-                </Text>
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search players"
+          />
+          <View style={styles.cardList}>
+            {filteredActive.map((player) => (
+              <View key={player.id} style={styles.playerCard}>
+                <View style={styles.playerHeader}>
+                  <Text style={styles.playerName}>{player.displayName}</Text>
+                  <View style={styles.ratingBadge}>
+                    <Text style={styles.ratingText}>Rating {player.rating}</Text>
+                  </View>
+                </View>
                 {editingPlayerId === player.id ? (
                   <View style={styles.editRow}>
                     <TextInput
@@ -170,50 +200,54 @@ export default function GroupPlayersScreen({ route }: Props) {
                     />
                   </View>
                 ) : null}
-              </View>
-              {isOwner && (
-                <View style={styles.rowActions}>
-                  <AppButton
-                    variant="ghost"
-                    title="Edit rating"
-                    onPress={() => {
-                      setEditingPlayerId(player.id);
-                      setEditingRating(String(player.rating));
-                    }}
-                  />
-                  <AppButton
-                    variant="ghost"
-                    title="Deactivate"
-                    onPress={() => setActive(player.id, false)}
-                  />
-                  <AppButton
-                    variant="ghost"
-                    title="Delete"
-                    onPress={() => deletePlayer(player.id)}
-                  />
-                </View>
-              )}
-            </View>
-          ))}
-          {showInactive &&
-            inactivePlayers.map((player) => (
-              <View key={player.id} style={styles.row}>
-                <View style={styles.rowInfo}>
-                  <Text style={styles.rowTextMuted}>
-                    {player.displayName} (rating {player.rating})
-                  </Text>
-                </View>
                 {isOwner && (
-                  <View style={styles.rowActions}>
+                  <View style={styles.cardActions}>
+                    <AppButton
+                      variant="secondary"
+                      title="Edit rating"
+                      onPress={() => {
+                        setEditingPlayerId(player.id);
+                        setEditingRating(String(player.rating));
+                      }}
+                    />
+                    <AppButton
+                      variant="secondary"
+                      title="Deactivate"
+                      onPress={() => setActive(player.id, false)}
+                    />
                     <AppButton
                       variant="ghost"
-                      title="Activate"
-                      onPress={() => setActive(player.id, true)}
+                      title="Delete"
+                      onPress={() => deletePlayer(player.id)}
                     />
                   </View>
                 )}
               </View>
             ))}
+            {showInactive &&
+              filteredInactive.map((player) => (
+                <View key={player.id} style={styles.playerCardMuted}>
+                  <View style={styles.playerHeader}>
+                    <Text style={styles.playerNameMuted}>{player.displayName}</Text>
+                    <View style={styles.ratingBadgeMuted}>
+                      <Text style={styles.ratingTextMuted}>Rating {player.rating}</Text>
+                    </View>
+                  </View>
+                  {isOwner && (
+                    <View style={styles.cardActions}>
+                      <AppButton
+                        variant="secondary"
+                        title="Activate"
+                        onPress={() => setActive(player.id, true)}
+                      />
+                    </View>
+                  )}
+                </View>
+              ))}
+            {filteredActive.length === 0 && (!showInactive || filteredInactive.length === 0) && (
+              <Text style={styles.helper}>No matching players.</Text>
+            )}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -280,19 +314,93 @@ const styles = StyleSheet.create({
   rowActions: {
     gap: 8,
   },
-  rowText: {
-    fontSize: 14,
-    color: theme.colors.muted,
-  },
-  rowTextMuted: {
-    fontSize: 14,
-    color: theme.colors.muted,
-    textDecorationLine: "line-through",
-  },
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  playersHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.input,
+    padding: 12,
+    backgroundColor: theme.colors.card,
+    color: theme.colors.ink,
+  },
+  cardList: {
+    gap: 12,
+  },
+  playerCard: {
+    backgroundColor: theme.colors.soft,
+    borderRadius: theme.radius.card,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  playerCardMuted: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.card,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    opacity: 0.75,
+  },
+  playerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  playerName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: theme.colors.ink,
+    flex: 1,
+  },
+  playerNameMuted: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: theme.colors.muted,
+    flex: 1,
+  },
+  ratingBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  ratingBadgeMuted: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: theme.colors.soft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.ink,
+  },
+  ratingTextMuted: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.muted,
+  },
+  cardActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   editRow: {
     flexDirection: "row",

@@ -67,6 +67,11 @@ export default function GroupSessionsScreen({ route, navigation }: Props) {
           />
           <AppButton
             variant="secondary"
+            title="Player Statistics"
+            onPress={() => navigation.navigate("PlayersLeaderboard", { groupId } as never)}
+          />
+          <AppButton
+            variant="secondary"
             title="Manage Players"
             onPress={() => navigation.navigate("GroupPlayers", { groupId })}
           />

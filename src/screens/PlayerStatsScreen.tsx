@@ -11,6 +11,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, "PlayerStats">;
 type PlayerStats = {
   playerId: string;
   playerName: string;
+  isActive: boolean;
   totals: {
     matchesPlayed: number;
     wins: number;
@@ -66,7 +67,24 @@ export default function PlayerStatsScreen({ route }: Props) {
         <View style={styles.headerCard}>
           <View style={styles.headerGlow} />
           <Text style={styles.kicker}>Player Stats</Text>
-          <Text style={styles.title}>{stats.playerName}</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.title}>{stats.playerName}</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                stats.isActive ? styles.statusActive : styles.statusInactive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusText,
+                  stats.isActive ? styles.statusTextActive : styles.statusTextInactive,
+                ]}
+              >
+                {stats.isActive ? "Active" : "Inactive"}
+              </Text>
+            </View>
+          </View>
           <View style={styles.headerRow}>
             <View style={styles.headerPill}>
               <Ionicons name="trophy" size={14} color="#fff" />
@@ -195,6 +213,36 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "700",
     color: "#fff",
+  },
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+  },
+  statusActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.6)",
+  },
+  statusInactive: {
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: "rgba(255, 255, 255, 0.35)",
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  statusTextActive: {
+    color: "#fff",
+  },
+  statusTextInactive: {
+    color: "#f5d7d7",
   },
   headerRow: {
     flexDirection: "row",

@@ -13,6 +13,7 @@ type LeaderboardRow = {
   losses: number;
   pointsFor: number;
   pointsAgainst: number;
+  isActive: boolean;
 };
 
 type Props = NativeStackScreenProps<HomeStackParamList, "PlayersLeaderboard">;
@@ -23,14 +24,16 @@ export default function PlayersLeaderboardScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     const load = async () => {
-      const response = await api.get(`/groups/${groupId}/leaderboard`);
+      const response = await api.get(`/groups/${groupId}/leaderboard?includeInactive=1`);
       setPlayers(response.data ?? []);
     };
     load();
   }, [groupId]);
 
-  const podium = players.slice(0, 3);
-  const rest = players.slice(3);
+  const activePlayers = players.filter((player) => player.isActive);
+  const inactivePlayers = players.filter((player) => !player.isActive);
+  const podium = activePlayers.slice(0, 3);
+  const rest = activePlayers.slice(3);
   const medalMeta = [
     { style: styles.medalGold, iconColor: "#b7791f" },
     { style: styles.medalSilver, iconColor: "#5f6b7a" },
@@ -46,36 +49,43 @@ export default function PlayersLeaderboardScreen({ route, navigation }: Props) {
         ) : (
           <>
             <Text style={styles.sectionTitle}>Podium</Text>
-            <View style={styles.podiumWrap}>
-              {podium.map((player, index) => (
-                <Pressable
-                  key={player.playerId}
-                  style={styles.podiumCard}
-                  onPress={() =>
-                    navigation.navigate("PlayerStats", {
-                      groupId,
-                      playerId: player.playerId,
-                    })
-                  }
-                >
-                  <View style={[styles.medal, medalMeta[index]?.style]}>
-                    <Ionicons
-                      name="trophy"
-                      size={16}
-                      color={medalMeta[index]?.iconColor ?? theme.colors.muted}
-                    />
-                    <Text style={styles.medalRank}>#{index + 1}</Text>
-                  </View>
-                  <Text style={styles.podiumName}>{player.name}</Text>
-                  <Text style={styles.podiumStats}>
-                    {player.wins}W-{player.losses}L
-                  </Text>
-                  <Text style={styles.podiumPoints}>
-                    {player.pointsFor}-{player.pointsAgainst}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            {podium.length === 0 ? (
+              <Text style={styles.row}>No active players on the podium.</Text>
+            ) : (
+              <View style={styles.podiumWrap}>
+                {podium.map((player, index) => (
+                  <Pressable
+                    key={player.playerId}
+                    style={styles.podiumCard}
+                    onPress={() =>
+                      navigation.navigate("PlayerStats", {
+                        groupId,
+                        playerId: player.playerId,
+                      })
+                    }
+                  >
+                    <View style={[styles.medal, medalMeta[index]?.style]}>
+                      <Ionicons
+                        name="trophy"
+                        size={16}
+                        color={medalMeta[index]?.iconColor ?? theme.colors.muted}
+                      />
+                      <Text style={styles.medalRank}>#{index + 1}</Text>
+                    </View>
+                    <Text style={styles.podiumName}>{player.name}</Text>
+                    <View style={styles.statusBadge}>
+                      <Text style={styles.statusText}>Active</Text>
+                    </View>
+                    <Text style={styles.podiumStats}>
+                      {player.wins}W-{player.losses}L
+                    </Text>
+                    <Text style={styles.podiumPoints}>
+                      {player.pointsFor}-{player.pointsAgainst}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
             {rest.length > 0 && <Text style={styles.sectionTitle}>All Players</Text>}
             {rest.map((player, index) => (
               <Pressable
@@ -93,12 +103,47 @@ export default function PlayersLeaderboardScreen({ route, navigation }: Props) {
                 </View>
                 <View style={styles.listInfo}>
                   <Text style={styles.listName}>{player.name}</Text>
+                  <View style={styles.statusBadgeSmall}>
+                    <Text style={styles.statusTextSmall}>Active</Text>
+                  </View>
                   <Text style={styles.listStats}>
                     {player.wins}W-{player.losses}L ({player.pointsFor}-{player.pointsAgainst})
                   </Text>
                 </View>
               </Pressable>
             ))}
+            {inactivePlayers.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Inactive Players</Text>
+                {inactivePlayers.map((player, index) => (
+                  <Pressable
+                    key={player.playerId}
+                    style={[styles.listRow, styles.listRowMuted]}
+                    onPress={() =>
+                      navigation.navigate("PlayerStats", {
+                        groupId,
+                        playerId: player.playerId,
+                      })
+                    }
+                  >
+                    <View style={styles.rankBadgeMuted}>
+                      <Text style={styles.rankTextMuted}>
+                        #{rest.length + index + 4}
+                      </Text>
+                    </View>
+                    <View style={styles.listInfo}>
+                      <Text style={styles.listNameMuted}>{player.name}</Text>
+                      <View style={styles.statusBadgeMuted}>
+                        <Text style={styles.statusTextMuted}>Inactive</Text>
+                      </View>
+                      <Text style={styles.listStatsMuted}>
+                        {player.wins}W-{player.losses}L ({player.pointsFor}-{player.pointsAgainst})
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -147,6 +192,20 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     textAlign: "center",
   },
+  statusBadge: {
+    alignSelf: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: "#e6f6ea",
+    borderWidth: 1,
+    borderColor: "#4caf50",
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#2e7d32",
+  },
   podiumStats: {
     fontSize: 13,
     color: theme.colors.muted,
@@ -190,8 +249,63 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.ink,
   },
+  listNameMuted: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: theme.colors.muted,
+  },
+  statusBadgeSmall: {
+    alignSelf: "flex-start",
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: theme.radius.pill,
+    backgroundColor: "#e6f6ea",
+    borderWidth: 1,
+    borderColor: "#4caf50",
+  },
+  statusTextSmall: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#2e7d32",
+  },
+  statusBadgeMuted: {
+    alignSelf: "flex-start",
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.soft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  statusTextMuted: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: theme.colors.muted,
+  },
   listStats: {
     fontSize: 12,
+    color: theme.colors.muted,
+  },
+  listStatsMuted: {
+    fontSize: 12,
+    color: theme.colors.muted,
+  },
+  listRowMuted: {
+    opacity: 0.75,
+  },
+  rankBadgeMuted: {
+    minWidth: 44,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.soft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+  },
+  rankTextMuted: {
+    fontSize: 12,
+    fontWeight: "700",
     color: theme.colors.muted,
   },
   medal: {
