@@ -10,7 +10,7 @@
       "android"
     ],
     "icon": "./app_icon_badminton.png",
-    "sdkVersion": "51.0.0",
+    "sdkVersion": "54.0.0",
     "userInterfaceStyle": "light",
     "splash": {
       "backgroundColor": "#f6f4ef"
