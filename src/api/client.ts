@@ -4,8 +4,8 @@ import { useAuthStore } from "../store/useAuthStore";
 
 const baseURL =
   process.env.EXPO_PUBLIC_API_BASE_URL ??
-  (Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000");
-// "https://smashref.solvvtech.com";
+  // (Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000");
+"https://smashref.solvvtech.com";
 
 const api = axios.create({
   baseURL,

@@ -65,13 +65,18 @@ export default function GroupPlayersScreen({ route }: Props) {
       Alert.alert("Invalid rating", "Use a rating between 1 and 10.");
       return;
     }
-    await api.post(`/groups/${groupId}/players`, {
-      displayName: name.trim(),
-      rating: value,
-    });
-    setName("");
-    setRating("5");
-    await load();
+    try {
+      await api.post(`/groups/${groupId}/players`, {
+        displayName: name.trim(),
+        rating: value,
+      });
+      setName("");
+      setRating("5");
+      await load();
+    } catch (error: any) {
+      const message = error?.response?.data?.message ?? "Unable to add player.";
+      Alert.alert("Add failed", message);
+    }
   };
 
   const deletePlayer = async (playerId: string) => {
