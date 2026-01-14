@@ -14,10 +14,14 @@ import MatchDetailScreen from "./src/screens/MatchDetailScreen";
 import SessionCreateScreen from "./src/screens/SessionCreateScreen";
 import SessionBoardScreen from "./src/screens/SessionBoardScreen";
 import SessionMatchesScreen from "./src/screens/SessionMatchesScreen";
+import MatchesPerPlayerScreen from "./src/screens/MatchesPerPlayerScreen";
 import SessionSummaryScreen from "./src/screens/SessionSummaryScreen";
 import SessionsListScreen from "./src/screens/SessionsListScreen";
 import PlayersLeaderboardScreen from "./src/screens/PlayersLeaderboardScreen";
 import PlayerStatsScreen from "./src/screens/PlayerStatsScreen";
+import TopPlayersGroupsScreen from "./src/screens/TopPlayersGroupsScreen";
+import PlayerSessionDetailScreen from "./src/screens/PlayerSessionDetailScreen";
+import PlayerSessionsScreen from "./src/screens/PlayerSessionsScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import PlayersManageScreen from "./src/screens/PlayersManageScreen";
 import SessionGroupsScreen from "./src/screens/SessionGroupsScreen";
@@ -48,6 +52,9 @@ const HomeStackScreen = () => (
     <HomeStack.Screen name="SessionsList" component={SessionsListScreen} />
     <HomeStack.Screen name="PlayersLeaderboard" component={PlayersLeaderboardScreen} />
     <HomeStack.Screen name="PlayerStats" component={PlayerStatsScreen} />
+    <HomeStack.Screen name="TopPlayersGroups" component={TopPlayersGroupsScreen} />
+    <HomeStack.Screen name="PlayerSessionDetail" component={PlayerSessionDetailScreen} />
+    <HomeStack.Screen name="PlayerSessions" component={PlayerSessionsScreen} />
   </HomeStack.Navigator>
 );
 
@@ -59,6 +66,7 @@ const SessionStackScreen = () => (
     <SessionStack.Screen name="SessionCreate" component={SessionCreateScreen} />
     <SessionStack.Screen name="SessionBoard" component={SessionBoardScreen} />
     <SessionStack.Screen name="SessionMatches" component={SessionMatchesScreen} />
+    <SessionStack.Screen name="MatchesPerPlayer" component={MatchesPerPlayerScreen} />
     <SessionStack.Screen name="ManualMatch" component={ManualMatchScreen} />
     <SessionStack.Screen name="SessionSummary" component={SessionSummaryScreen} />
   </SessionStack.Navigator>

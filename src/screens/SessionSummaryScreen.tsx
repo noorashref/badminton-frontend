@@ -263,28 +263,30 @@ export default function SessionSummaryScreen({ route }: Props) {
         {summary ? (
           <>
             <View style={styles.summaryHeader}>
-              <View>
-                <Text style={styles.sessionName}>{summary.sessionName}</Text>
-                <Text style={styles.sessionMeta}>
-                  {summary.finishedAt
-                    ? `Completed ${new Date(summary.finishedAt).toLocaleString()}`
-                    : "In progress"}
-                </Text>
+              <View style={styles.summaryHeaderRow}>
+                <View>
+                  <Text style={styles.sessionName}>{summary.sessionName}</Text>
+                  <Text style={styles.sessionMeta}>
+                    {summary.finishedAt
+                      ? `Completed ${new Date(summary.finishedAt).toLocaleString()}`
+                      : "In progress"}
+                  </Text>
+                </View>
+                <AppButton title="Export PDF" onPress={exportPdf} />
               </View>
-              <AppButton title="Export PDF" onPress={exportPdf} />
-            </View>
-            <View style={styles.summaryHighlights}>
-              <View style={styles.highlightCard}>
-                <Text style={styles.highlightLabel}>Teams Ranked</Text>
-                <Text style={styles.highlightValue}>{summary.topTeams.length}</Text>
-              </View>
-              <View style={styles.highlightCard}>
-                <Text style={styles.highlightLabel}>Players Ranked</Text>
-                <Text style={styles.highlightValue}>{summary.topPlayers.length}</Text>
-              </View>
-              <View style={styles.highlightCard}>
-                <Text style={styles.highlightLabel}>Matches</Text>
-                <Text style={styles.highlightValue}>{summary.matches.length}</Text>
+              <View style={styles.summaryHighlights}>
+                <View style={styles.highlightCard}>
+                  <Text style={styles.highlightLabel}>Teams</Text>
+                  <Text style={styles.highlightValue}>{summary.topTeams.length}</Text>
+                </View>
+                <View style={styles.highlightCard}>
+                  <Text style={styles.highlightLabel}>Players</Text>
+                  <Text style={styles.highlightValue}>{summary.topPlayers.length}</Text>
+                </View>
+                <View style={styles.highlightCard}>
+                  <Text style={styles.highlightLabel}>Matches</Text>
+                  <Text style={styles.highlightValue}>{summary.matches.length}</Text>
+                </View>
               </View>
             </View>
             <View style={styles.card}>
@@ -331,13 +333,17 @@ export default function SessionSummaryScreen({ route }: Props) {
                     <View style={styles.matchBadge}>
                       <Text style={styles.matchBadgeText}>R{match.roundIndex + 1}</Text>
                     </View>
-                    <View style={styles.matchTeams}>
-                      <Text style={styles.matchTeamText}>{match.teamA.join(" & ")}</Text>
-                      <Text style={styles.matchScore}>
+                    <Text style={styles.matchTeam} numberOfLines={1}>
+                      {match.teamA.join(" & ")}
+                    </Text>
+                    <View style={styles.matchScorePill}>
+                      <Text style={styles.matchScoreText}>
                         {match.teamAScore}-{match.teamBScore}
                       </Text>
-                      <Text style={styles.matchTeamText}>{match.teamB.join(" & ")}</Text>
                     </View>
+                    <Text style={styles.matchTeam} numberOfLines={1}>
+                      {match.teamB.join(" & ")}
+                    </Text>
                   </View>
                 ))
               )}
@@ -358,7 +364,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    gap: 12,
+    gap: 10,
   },
   header: {
     gap: 6,
@@ -370,12 +376,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     color: theme.colors.ink,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: theme.colors.muted,
   },
   sessionName: {
@@ -390,9 +396,15 @@ const styles = StyleSheet.create({
   summaryHeader: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.card,
-    padding: 16,
-    gap: 12,
+    padding: 14,
+    gap: 10,
     ...theme.shadow,
+  },
+  summaryHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
   },
   summaryHighlights: {
     flexDirection: "row",
@@ -404,25 +416,25 @@ const styles = StyleSheet.create({
     minWidth: 120,
     backgroundColor: theme.colors.soft,
     borderRadius: theme.radius.card,
-    padding: 14,
+    padding: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
   highlightLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: theme.colors.muted,
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   highlightValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: theme.colors.ink,
     marginTop: 6,
   },
   card: {
     backgroundColor: theme.colors.card,
-    padding: 16,
+    padding: 12,
     borderRadius: theme.radius.card,
     gap: 8,
     ...theme.shadow,
@@ -441,7 +453,7 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
   },
   listRow: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
     gap: 6,
@@ -472,36 +484,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.muted,
   },
+  matchBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.ink,
+  },
   matchRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
+    gap: 8,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   matchBadge: {
     backgroundColor: theme.colors.soft,
     borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  matchBadgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: theme.colors.ink,
-  },
-  matchTeams: {
+  matchTeam: {
     flex: 1,
-    gap: 4,
-  },
-  matchTeamText: {
     fontSize: 13,
     color: theme.colors.ink,
   },
-  matchScore: {
+  matchScorePill: {
+    minWidth: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.soft,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  matchScoreText: {
     fontSize: 12,
     fontWeight: "700",
     color: theme.colors.accent,

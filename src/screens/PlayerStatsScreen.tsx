@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import type { HomeStackParamList } from "../navigation/types";
@@ -38,7 +38,7 @@ type PlayerStats = {
   }[];
 };
 
-export default function PlayerStatsScreen({ route }: Props) {
+export default function PlayerStatsScreen({ route, navigation }: Props) {
   const { groupId, playerId } = route.params;
   const [stats, setStats] = useState<PlayerStats | null>(null);
 
@@ -134,8 +134,15 @@ export default function PlayerStatsScreen({ route }: Props) {
             </View>
             <View style={styles.finishItem}>
               <Ionicons name="calendar" size={16} color={theme.colors.primary} />
-              <Text style={styles.finishValue}>{stats.topFinishes.sessionsPlayed}</Text>
-              <Text style={styles.finishLabel}>Sessions</Text>
+              <Pressable
+                style={styles.finishPressable}
+                onPress={() => {
+                  navigation.navigate("PlayerSessions", { groupId, playerId });
+                }}
+              >
+                <Text style={styles.finishValue}>{stats.topFinishes.sessionsPlayed}</Text>
+                <Text style={styles.finishLabel}>Sessions</Text>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -329,6 +336,9 @@ const styles = StyleSheet.create({
   finishLabel: {
     fontSize: 12,
     color: theme.colors.muted,
+  },
+  finishPressable: {
+    alignItems: "center",
   },
   matchRow: {
     paddingVertical: 8,

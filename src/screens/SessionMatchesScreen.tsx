@@ -139,6 +139,7 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
   const [session, setSession] = useState<SessionDetails | null>(null);
   const [scores, setScores] = useState<Record<string, { a: string; b: string }>>({});
   const [savedAssignments, setSavedAssignments] = useState<Record<string, boolean>>({});
+  const [editingScores, setEditingScores] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [swapOutId, setSwapOutId] = useState<string | null>(null);
@@ -166,6 +167,7 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
     const nextRounds = scheduleData.rounds ?? [];
     const nextScores: Record<string, { a: string; b: string }> = {};
     const nextSaved: Record<string, boolean> = {};
+    const nextEditing: Record<string, boolean> = {};
     nextRounds.forEach((round) => {
       round.assignments.forEach((assignment) => {
         if (assignment.score) {
@@ -174,12 +176,16 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
             b: String(assignment.score.teamBScore),
           };
           nextSaved[assignment.id] = true;
+          nextEditing[assignment.id] = false;
+        } else {
+          nextEditing[assignment.id] = true;
         }
       });
     });
     setRounds(nextRounds);
     setScores(nextScores);
     setSavedAssignments(nextSaved);
+    setEditingScores(nextEditing);
   };
 
   useEffect(() => {
@@ -212,6 +218,12 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
   const saveScore = async (assignment: RoundAssignment, silent = false) => {
     try {
       const score = scores[assignment.id] ?? { a: "", b: "" };
+      if (!score.a.trim() || !score.b.trim()) {
+        if (!silent) {
+          Alert.alert("Incomplete score", "Enter both team scores before saving.");
+        }
+        return;
+      }
       const teamAScore = Number(score.a);
       const teamBScore = Number(score.b);
       if (!Number.isFinite(teamAScore) || !Number.isFinite(teamBScore)) {
@@ -226,6 +238,7 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
       });
       lastSaved.current[assignment.id] = { a: score.a, b: score.b };
       setSavedAssignments((prev) => ({ ...prev, [assignment.id]: true }));
+      setEditingScores((prev) => ({ ...prev, [assignment.id]: false }));
       if (!silent) {
         setToast({ message: "Score saved.", variant: "success" });
       }
@@ -245,6 +258,8 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
   const scheduleAutoSave = (assignment: RoundAssignment, nextScore?: { a: string; b: string }) => {
     const score = nextScore ?? scores[assignment.id];
     if (!score) return;
+    if (!score.a.trim() || !score.b.trim()) return;
+    if (!Number.isFinite(Number(score.a)) || !Number.isFinite(Number(score.b))) return;
     if (saveTimers.current[assignment.id]) {
       clearTimeout(saveTimers.current[assignment.id]);
     }
@@ -422,6 +437,7 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
                     Boolean(scores[assignment.id]?.a?.trim()) ||
                     Boolean(scores[assignment.id]?.b?.trim());
                   const isSaved = Boolean(savedAssignments[assignment.id]);
+                  const isScoreLocked = isSaved && !editingScores[assignment.id];
                   return (
                 <View
                   key={assignment.id}
@@ -454,10 +470,85 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
                       </View>
                     </View>
                   </View>
+                  <View style={styles.scoreRow}>
+                    <TextInput
+                      style={styles.scoreInput}
+                      value={scores[assignment.id]?.a ?? ""}
+                      onChangeText={(value) => {
+                        if (isScoreLocked) return;
+                        const next = {
+                          a: value,
+                          b: scores[assignment.id]?.b ?? "",
+                        };
+                        setScores((prev) => ({
+                          ...prev,
+                          [assignment.id]: next,
+                        }));
+                        setSavedAssignments((prev) => ({
+                          ...prev,
+                          [assignment.id]: false,
+                        }));
+                        scheduleAutoSave(assignment, next);
+                      }}
+                      onBlur={() => scheduleAutoSave(assignment)}
+                      editable={!isScoreLocked}
+                      keyboardType="number-pad"
+                      inputMode="numeric"
+                      returnKeyType="done"
+                      selectTextOnFocus
+                      placeholder="A"
+                    />
+                    <Text style={styles.scoreDash}>-</Text>
+                    <TextInput
+                      style={styles.scoreInput}
+                      value={scores[assignment.id]?.b ?? ""}
+                      onChangeText={(value) => {
+                        if (isScoreLocked) return;
+                        const next = {
+                          a: scores[assignment.id]?.a ?? "",
+                          b: value,
+                        };
+                        setScores((prev) => ({
+                          ...prev,
+                          [assignment.id]: next,
+                        }));
+                        setSavedAssignments((prev) => ({
+                          ...prev,
+                          [assignment.id]: false,
+                        }));
+                        scheduleAutoSave(assignment, next);
+                      }}
+                      onBlur={() => scheduleAutoSave(assignment)}
+                      editable={!isScoreLocked}
+                      keyboardType="number-pad"
+                      inputMode="numeric"
+                      returnKeyType="done"
+                      selectTextOnFocus
+                      placeholder="B"
+                    />
+                    {isScoreLocked ? (
+                      <AppButton
+                        variant="ghost"
+                        title="Edit score"
+                        onPress={() =>
+                          setEditingScores((prev) => ({
+                            ...prev,
+                            [assignment.id]: true,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <AppButton
+                        variant="ghost"
+                        title="Save"
+                        onPress={() => saveScore(assignment)}
+                      />
+                    )}
+                  </View>
                   <View style={styles.matchActions}>
                     <AppButton
                       variant="ghost"
-                      title="Edit"
+                      title="Edit player"
                       onPress={() => {
                         setEditingAssignmentId(assignment.id);
                         setSwapOutId(null);
@@ -466,7 +557,7 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
                     />
                     <AppButton
                       variant="ghost"
-                      title="Delete"
+                      title="Delete round"
                       onPress={() =>
                         Alert.alert(
                           "Delete match",
@@ -529,64 +620,6 @@ export default function SessionMatchesScreen({ route, navigation }: Props) {
                       </View>
                     </View>
                   )}
-                  <View style={styles.scoreRow}>
-                    <TextInput
-                      style={styles.scoreInput}
-                      value={scores[assignment.id]?.a ?? ""}
-                      onChangeText={(value) => {
-                        const next = {
-                          a: value,
-                          b: scores[assignment.id]?.b ?? "",
-                        };
-                        setScores((prev) => ({
-                          ...prev,
-                          [assignment.id]: next,
-                        }));
-                        setSavedAssignments((prev) => ({
-                          ...prev,
-                          [assignment.id]: false,
-                        }));
-                        scheduleAutoSave(assignment, next);
-                      }}
-                      onBlur={() => scheduleAutoSave(assignment)}
-                      keyboardType="number-pad"
-                      inputMode="numeric"
-                      returnKeyType="done"
-                      selectTextOnFocus
-                      placeholder="A"
-                    />
-                    <Text style={styles.scoreDash}>-</Text>
-                    <TextInput
-                      style={styles.scoreInput}
-                      value={scores[assignment.id]?.b ?? ""}
-                      onChangeText={(value) => {
-                        const next = {
-                          a: scores[assignment.id]?.a ?? "",
-                          b: value,
-                        };
-                        setScores((prev) => ({
-                          ...prev,
-                          [assignment.id]: next,
-                        }));
-                        setSavedAssignments((prev) => ({
-                          ...prev,
-                          [assignment.id]: false,
-                        }));
-                        scheduleAutoSave(assignment, next);
-                      }}
-                      onBlur={() => scheduleAutoSave(assignment)}
-                      keyboardType="number-pad"
-                      inputMode="numeric"
-                      returnKeyType="done"
-                      selectTextOnFocus
-                      placeholder="B"
-                    />
-                    <AppButton
-                      variant="ghost"
-                      title="Save"
-                      onPress={() => saveScore(assignment)}
-                    />
-                  </View>
                 </View>
                   );
                 })()
@@ -728,10 +761,13 @@ const styles = StyleSheet.create({
   scoreRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "center",
+    gap: 14,
+    marginTop: 6,
   },
   scoreInput: {
-    width: 56,
+    width: 72,
+    height: 44,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.input,
@@ -739,6 +775,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     backgroundColor: theme.colors.soft,
     color: theme.colors.ink,
+    fontSize: 16,
+    fontWeight: "600",
   },
   scoreDash: {
     fontWeight: "700",

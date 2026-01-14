@@ -3,7 +3,7 @@ export type Role = "ADMIN" | "ORGANIZER" | "PLAYER" | "VIEWER";
 export type PlayerProfile = {
   id: string;
   displayName: string;
-  rating: number; // 1-10 MVP scale
+  rating: number; // 0-100 MVP scale
 };
 
 export type CourtWindow = {

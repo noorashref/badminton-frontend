@@ -63,7 +63,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
   const [courtName, setCourtName] = useState("Court A");
   const [courtHours, setCourtHours] = useState("2");
   const [playerName, setPlayerName] = useState("");
-  const [playerRating, setPlayerRating] = useState("5");
+  const [playerRating, setPlayerRating] = useState("50");
   const [players, setPlayers] = useState<PlayerItem[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showPlayerList, setShowPlayerList] = useState(false);
@@ -210,8 +210,8 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
       return;
     }
     const rating = Number(playerRating);
-    if (!Number.isFinite(rating) || rating < 1 || rating > 10) {
-      Alert.alert("Invalid rating", "Use a rating between 1 and 10.");
+    if (!Number.isFinite(rating) || rating < 0 || rating > 100) {
+      Alert.alert("Invalid rating", "Use a rating between 0 and 100.");
       return;
     }
     const playerRes = session.groupId
@@ -444,7 +444,7 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
         <Text style={styles.helper}>Or create a new player:</Text>
         <Text style={styles.label}>Player name</Text>
         <TextInput style={styles.input} value={playerName} onChangeText={setPlayerName} />
-        <Text style={styles.label}>Rating (1-10)</Text>
+        <Text style={styles.label}>Rating (0-100)</Text>
         <TextInput
           style={styles.input}
           value={playerRating}
@@ -506,6 +506,11 @@ export default function SessionBoardScreen({ route, navigation }: Props) {
             variant="secondary"
             title="View Matches"
             onPress={() => navigation.navigate("SessionMatches", { sessionId })}
+          />
+          <AppButton
+            variant="secondary"
+            title="Matches per players"
+            onPress={() => navigation.navigate("MatchesPerPlayer", { sessionId })}
           />
           <AppButton
             variant="secondary"

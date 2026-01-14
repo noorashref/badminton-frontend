@@ -171,13 +171,9 @@ export default function HomeScreen({ navigation }: Props) {
         )}
         <AppButton
           variant="secondary"
-          title="View Full Leaderboard"
+          title="View by group"
           onPress={() => {
-            if (!summary?.groupId) {
-              Alert.alert("No group found", "Finish a session in a group first.");
-              return;
-            }
-            navigation.navigate("PlayersLeaderboard", { groupId: summary.groupId });
+            navigation.navigate("TopPlayersGroups");
           }}
         />
       </View>

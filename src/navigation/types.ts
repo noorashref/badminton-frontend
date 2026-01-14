@@ -7,6 +7,9 @@ export type HomeStackParamList = {
   SessionsList: undefined;
   PlayersLeaderboard: { groupId: string };
   PlayerStats: { groupId: string; playerId: string };
+  TopPlayersGroups: undefined;
+  PlayerSessionDetail: { groupId: string; playerId: string; sessionId: string };
+  PlayerSessions: { groupId: string; playerId: string };
 };
 
 export type SettingsStackParamList = {
@@ -27,6 +30,7 @@ export type SessionStackParamList = {
   SessionCreate: { groupId?: string } | undefined;
   SessionBoard: { sessionId: string };
   SessionMatches: { sessionId: string };
+  MatchesPerPlayer: { sessionId: string };
   ManualMatch: { sessionId: string };
   SessionSummary: { sessionId: string };
 };

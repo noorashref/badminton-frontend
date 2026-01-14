@@ -28,11 +28,11 @@ export default function GroupPlayersScreen({ route }: Props) {
   const { groupId } = route.params;
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
-  const [rating, setRating] = useState("5");
+  const [rating, setRating] = useState("50");
   const [showInactive, setShowInactive] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [editingRating, setEditingRating] = useState("5");
+  const [editingRating, setEditingRating] = useState("50");
   const [search, setSearch] = useState("");
 
   const load = async () => {
@@ -61,8 +61,8 @@ export default function GroupPlayersScreen({ route }: Props) {
       return;
     }
     const value = Number(rating);
-    if (!Number.isFinite(value) || value < 1 || value > 10) {
-      Alert.alert("Invalid rating", "Use a rating between 1 and 10.");
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      Alert.alert("Invalid rating", "Use a rating between 0 and 100.");
       return;
     }
     try {
@@ -91,8 +91,8 @@ export default function GroupPlayersScreen({ route }: Props) {
 
   const saveRating = async (playerId: string) => {
     const value = Number(editingRating);
-    if (!Number.isFinite(value) || value < 1 || value > 10) {
-      Alert.alert("Invalid rating", "Use a rating between 1 and 10.");
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      Alert.alert("Invalid rating", "Use a rating between 0 and 100.");
       return;
     }
     try {
@@ -123,6 +123,9 @@ export default function GroupPlayersScreen({ route }: Props) {
     () => players.filter((player) => !player.isActive),
     [players]
   );
+  const totalPlayers = players.length;
+  const activeCount = activePlayers.length;
+  const inactiveCount = inactivePlayers.length;
   const filteredActive = useMemo(() => {
     const term = search.trim().toLowerCase();
     const list = term
@@ -158,16 +161,21 @@ export default function GroupPlayersScreen({ route }: Props) {
             value={rating}
             onChangeText={setRating}
             keyboardType="number-pad"
-            placeholder="Rating (1-10)"
+            placeholder="Rating (0-100)"
           />
           <AppButton title="Add" onPress={addPlayer} />
         </View>
         <View style={styles.card}>
           <View style={styles.playersHeader}>
             <Text style={styles.sectionTitle}>Players</Text>
-            <View style={styles.toggleRow}>
-              <Text style={styles.helper}>Show inactive</Text>
-              <Switch value={showInactive} onValueChange={setShowInactive} />
+            <View style={styles.headerMeta}>
+              <Text style={styles.countsInline}>
+                {totalPlayers} total · {activeCount} active · {inactiveCount} inactive
+              </Text>
+              <View style={styles.toggleRow}>
+                <Text style={styles.helper}>Show inactive</Text>
+                <Switch value={showInactive} onValueChange={setShowInactive} />
+              </View>
             </View>
           </View>
           <TextInput
@@ -207,24 +215,34 @@ export default function GroupPlayersScreen({ route }: Props) {
                 ) : null}
                 {isOwner && (
                   <View style={styles.cardActions}>
-                    <AppButton
-                      variant="secondary"
-                      title="Edit rating"
-                      onPress={() => {
-                        setEditingPlayerId(player.id);
-                        setEditingRating(String(player.rating));
-                      }}
-                    />
-                    <AppButton
-                      variant="secondary"
-                      title="Deactivate"
-                      onPress={() => setActive(player.id, false)}
-                    />
-                    <AppButton
-                      variant="ghost"
-                      title="Delete"
-                      onPress={() => deletePlayer(player.id)}
-                    />
+                    <View style={styles.actionRow}>
+                      <View style={styles.actionButton}>
+                        <AppButton
+                          variant="secondary"
+                          title="Edit rating"
+                          onPress={() => {
+                            setEditingPlayerId(player.id);
+                            setEditingRating(String(player.rating));
+                          }}
+                        />
+                      </View>
+                      <View style={styles.actionButton}>
+                        <AppButton
+                          variant="secondary"
+                          title="Deactivate"
+                          onPress={() => setActive(player.id, false)}
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.actionRow}>
+                      <View style={styles.actionButton}>
+                        <AppButton
+                          variant="ghost"
+                          title="Delete"
+                          onPress={() => deletePlayer(player.id)}
+                        />
+                      </View>
+                    </View>
                   </View>
                 )}
               </View>
@@ -240,11 +258,15 @@ export default function GroupPlayersScreen({ route }: Props) {
                   </View>
                   {isOwner && (
                     <View style={styles.cardActions}>
-                      <AppButton
-                        variant="secondary"
-                        title="Activate"
-                        onPress={() => setActive(player.id, true)}
-                      />
+                      <View style={styles.actionRow}>
+                        <View style={styles.actionButton}>
+                          <AppButton
+                            variant="secondary"
+                            title="Activate"
+                            onPress={() => setActive(player.id, true)}
+                          />
+                        </View>
+                      </View>
                     </View>
                   )}
                 </View>
@@ -330,6 +352,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  headerMeta: {
+    alignItems: "flex-end",
+    gap: 6,
+  },
   searchInput: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -403,9 +429,15 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
   },
   cardActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    minWidth: 120,
   },
   editRow: {
     flexDirection: "row",
@@ -426,5 +458,15 @@ const styles = StyleSheet.create({
   helper: {
     fontSize: 12,
     color: theme.colors.muted,
+  },
+  countsInline: {
+    fontSize: 12,
+    color: theme.colors.ink,
+    backgroundColor: theme.colors.soft,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
 });

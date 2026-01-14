@@ -21,7 +21,7 @@ type Player = {
 export default function PlayersManageScreen() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
-  const [rating, setRating] = useState("5");
+  const [rating, setRating] = useState("50");
 
   const load = async () => {
     const response = await api.get("/players");
@@ -38,8 +38,8 @@ export default function PlayersManageScreen() {
       return;
     }
     const value = Number(rating);
-    if (!Number.isFinite(value) || value < 1 || value > 10) {
-      Alert.alert("Invalid rating", "Use a rating between 1 and 10.");
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      Alert.alert("Invalid rating", "Use a rating between 0 and 100.");
       return;
     }
     try {
@@ -79,7 +79,7 @@ export default function PlayersManageScreen() {
             value={rating}
             onChangeText={setRating}
             keyboardType="number-pad"
-            placeholder="Rating (1-10)"
+            placeholder="Rating (0-100)"
           />
           <AppButton title="Add" onPress={addPlayer} />
         </View>
